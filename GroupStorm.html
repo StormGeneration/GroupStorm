@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GroupStorm</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #1e1e2f, #2c2c3f);
+      color: #cfd8dc;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      margin: 0;
+      color: #ffffff;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 12px;
+    }
+
+    .btn-main {
+      padding: 10px 16px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #00bcd4, #0097a7);
+      color: white;
+      cursor: pointer;
+    }
+
+    .btn-secondary {
+      padding: 8px 12px;
+      font-size: 14px;
+      border: none;
+      border-radius: 8px;
+      background: #455a64;
+      color: white;
+      cursor: pointer;
+    }
+
+    .app {
+      flex: 1;
+      display: grid;
+      grid-template-rows: 1fr;
+      overflow: hidden;
+    }
+
+    .grid {
+      height: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      align-items: start;
+      overflow-y: auto;
+    }
+
+    .name-grid, .group-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .name-box {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.06);
+      color: #ffffff;
+      text-align: center;
+      border: none;
+    }
+
+    .group-box {
+      background: rgba(0,188,212,0.14);
+      padding: 12px;
+      border-radius: 10px;
+      color: #ffffff;
+    }
+
+    .group-box h3 {
+      margin: 0 0 8px;
+      color: #00bcd4;
+    }
+
+    .group-box ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+
+    .group-box li {
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .controls {
+      margin-top: 14px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    input[type="number"] {
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+      background: rgba(255,255,255,0.06);
+      color: white;
+      width: 100px;
+    }
+
+    label {
+      font-size: 15px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #cfd8dc;
+    }
+
+    input[type="radio"] {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid #00bcd4;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+    }
+
+    input[type="radio"]:checked::before {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00bcd4;
+    }
+
+    /* ✅ Added styles */
+    #exitFullscreen {
+      display: none;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+
+    #fullscreenTitle {
+      display: none;
+      text-align: center;
+      color: #00bcd4;
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+
+    body.fullscreen .topbar,
+    body.fullscreen .controls,
+    body.fullscreen #nameGrid,
+    body.fullscreen label,
+    body.fullscreen .btn-main,
+    body.fullscreen .btn-secondary,
+    body.fullscreen div[style*="Add More"],
+    body.fullscreen div[style*="Clear"] {
+      display: none !important;
+    }
+
+    body.fullscreen #fullscreenTitle {
+      display: block !important;
+    }
+
+    body.fullscreen #exitFullscreen {
+      display: block !important;
+    }
+
+    body.fullscreen .grid {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    body.fullscreen .group-box {
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    body.fullscreen .group-box h3 {
+      font-size: 24px;
+      margin-bottom: 12px;
+      color: #00bcd4;
+    }
+
+    body.fullscreen .group-box ul {
+      font-size: 18px;
+      padding-left: 0;
+    }
+
+    body {
+  padding-bottom: 0 !important;
+}
+
+.app {
+  height: auto;
+  flex-grow: 1;
+  overflow: visible;
+}
+
+.grid {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 22px; }
+      .btn-main { font-size: 14px; padding: 8px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>GroupStorm</h1>
+    <p>Created by Derrick Richard | 2025</p>
+    <button class="btn-secondary" onclick="toggleFullscreen()">Fullscreen Mode</button>
+  </div>
+
+  <!-- ✅ Added exit button -->
+  <div id="exitFullscreen">
+    <button class="btn-secondary" onclick="toggleFullscreen()">Exit Fullscreen</button>
+  </div>
+
+  <!-- ✅ Added editable title -->
+  <h1 id="fullscreenTitle" contenteditable="true">Click To Edit Title | esc To Exit Full Screen Mode</h1>
+
+  <div class="app">
+    <div class="grid">
+      <div>
+        <label>Enter student names:</label>
+        <div id="nameGrid" class="name-grid"></div>
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-secondary" onclick="addNameBox('', 6)">Add More</button>
+          <button class="btn-secondary" onclick="clearNameBoxes()">Clear</button>
+        </div>
+
+        <div class="controls">
+          <label><input type="radio" name="groupMode" value="count" checked onchange="toggleGroupMode()"> Number of Groups</label>
+          <label><input type="radio" name="groupMode" value="size" onchange="toggleGroupMode()"> Amount per Group</label>
+          <input type="number" id="groupInput" placeholder="Enter value" />
+          <button class="btn-main" onclick="generateFlexibleGroups()">Generate Groups</button>
+          <button class="btn-secondary" onclick="clearGroups()">Reset</button>
+        </div>
+      </div>
+
+      <div>
+        <label style="margin-bottom: 8px; display:block;">Generated Groups:</label>
+        <div id="groupResults" class="group-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function addNameBox(value = '', count = 1) {
+      const grid = document.getElementById('nameGrid');
+      for (let i = 0; i < count; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'name-box';
+        input.placeholder = 'Student name';
+        input.value = value;
+        grid.appendChild(input);
+      }
+    }
+
+    function clearNameBoxes() {
+      document.getElementById('nameGrid').innerHTML = '';
+    }
+
+    function getAllNames() {
+      const inputs = document.querySelectorAll('#nameGrid .name-box');
+      return Array.from(inputs).map(i => i.value.trim()).filter(n => n !== '');
+    }
+
+    function clearGroups() {
+      document.getElementById('groupResults').innerHTML = '';
+    }
+
+    function toggleGroupMode() {
+      const mode = document.querySelector('input[name="groupMode"]:checked').value;
+  input.placeholder = mode === 'count' ? 'Number of groups' : 'Amount per group';
+}
+
+function generateFlexibleGroups() {
+  const names = getAllNames();
+  const value = parseInt(document.getElementById('groupInput').value);
+  const mode = document.querySelector('input[name="groupMode"]:checked').value;
+
+  if (!value || value < 1 || names.length === 0) {
+    alert('Please enter valid names and a group value.');
+    return;
+  }
+
+  const shuffled = [...names].sort(() => Math.random() - 0.5);
+  let groups = [];
+
+  if (mode === 'count') {
+    groups = Array.from({ length: value }, () => []);
+    shuffled.forEach((name, i) => {
+      groups[i % value].push(name);
+    });
+  } else {
+    const groupCount = Math.ceil(shuffled.length / value);
+    groups = Array.from({ length: groupCount }, () => []);
+    shuffled.forEach((name, i) => {
+      groups[Math.floor(i / value)].push(name);
+    });
+  }
+
+  const container = document.getElementById('groupResults');
+  container.innerHTML = '';
+  groups.forEach((group, i) => {
+    const box = document.createElement('div');
+    box.className = 'group-box';
+
+    const title = document.createElement('h3');
+    title.textContent = `Group ${i + 1}`;
+    box.appendChild(title);
+
+    const list = document.createElement('ul');
+    group.forEach(name => {
+      const item = document.createElement('li');
+      item.textContent = name;
+      list.appendChild(item);
+    });
+    box.appendChild(list);
+    container.appendChild(box);
+  });
+}
+
+function toggleFullscreen() {
+  const isFullscreen = document.body.classList.toggle('fullscreen');
+  document.getElementById('exitFullscreen').style.display = isFullscreen ? 'block' : 'none';
+  document.getElementById('fullscreenTitle').style.display = isFullscreen ? 'block' : 'none';
+}
+
+// ✅ Escape key support to exit fullscreen
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && document.body.classList.contains('fullscreen')) {
+    toggleFullscreen();
+  }
+});
+
+// ✅ Initialize with 20 name boxes
+addNameBox('', 20);
+  </script>
+</body>
+</html>
