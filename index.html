@@ -110,12 +110,19 @@
       border-bottom: 1px solid rgba(255,255,255,0.05);
     }
 
+    /* Controls row - keep single line where possible */
     .controls {
       margin-top: 14px;
       display: flex;
       gap: 12px;
       align-items: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap; /* keep everything on one line */
+      white-space: nowrap;
+    }
+
+    /* allow wrap on small screens */
+    @media (max-width: 680px) {
+      .controls { flex-wrap: wrap; white-space: normal; }
     }
 
     input[type="number"] {
@@ -124,7 +131,7 @@
       border: none;
       background: rgba(255,255,255,0.06);
       color: white;
-      width: 100px;
+      width: 120px;
     }
 
     label {
@@ -217,20 +224,23 @@
     }
 
     body {
-  padding-bottom: 0 !important;
-}
+      padding-bottom: 0 !important;
+    }
 
-.app {
-  height: auto;
-  flex-grow: 1;
-  overflow: visible;
-}
+    .app {
+      height: auto;
+      flex-grow: 1;
+      overflow: visible;
+    }
 
-.grid {
-  height: 100%;
-  min-height: 0;
-  overflow-y: auto;
-}
+    .grid {
+      height: 100%;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    /* shuffle button visibility helper */
+    #shuffleBtn { display: none; }
 
     @media (max-width: 900px) {
       .grid { grid-template-columns: 1fr; }
@@ -264,11 +274,14 @@
           <button class="btn-secondary" onclick="clearNameBoxes()">Clear</button>
         </div>
 
+        <!-- Controls: checkboxes/radios followed immediately by the three buttons on same line -->
         <div class="controls">
           <label><input type="radio" name="groupMode" value="count" checked onchange="toggleGroupMode()"> Number of Groups</label>
           <label><input type="radio" name="groupMode" value="size" onchange="toggleGroupMode()"> Amount per Group</label>
           <input type="number" id="groupInput" placeholder="Enter value" />
+          <!-- Buttons placed inline after the checkboxes -->
           <button class="btn-main" onclick="generateFlexibleGroups()">Generate Groups</button>
+          <button id="shuffleBtn" class="btn-main" onclick="shuffleGroups()">Shuffle Groups</button>
           <button class="btn-secondary" onclick="clearGroups()">Reset</button>
         </div>
       </div>
@@ -304,75 +317,129 @@
 
     function clearGroups() {
       document.getElementById('groupResults').innerHTML = '';
+      document.getElementById('shuffleBtn').style.display = 'none';
+      lastGroupSizes = [];
     }
 
     function toggleGroupMode() {
       const mode = document.querySelector('input[name="groupMode"]:checked').value;
-  input.placeholder = mode === 'count' ? 'Number of groups' : 'Amount per group';
-}
+      const input = document.getElementById('groupInput');
+      input.placeholder = mode === 'count' ? 'Number of groups' : 'Amount per group';
+    }
 
-function generateFlexibleGroups() {
-  const names = getAllNames();
-  const value = parseInt(document.getElementById('groupInput').value);
-  const mode = document.querySelector('input[name="groupMode"]:checked').value;
+    // Keep last generated group sizes so shuffle can rebuild with same distribution
+    let lastGroupSizes = [];
 
-  if (!value || value < 1 || names.length === 0) {
-    alert('Please enter valid names and a group value.');
-    return;
-  }
+    function generateFlexibleGroups() {
+      const names = getAllNames();
+      const value = parseInt(document.getElementById('groupInput').value);
+      const mode = document.querySelector('input[name="groupMode"]:checked').value;
 
-  const shuffled = [...names].sort(() => Math.random() - 0.5);
-  let groups = [];
+      if (!value || value < 1 || names.length === 0) {
+        alert('Please enter valid names and a group value.');
+        return;
+      }
 
-  if (mode === 'count') {
-    groups = Array.from({ length: value }, () => []);
-    shuffled.forEach((name, i) => {
-      groups[i % value].push(name);
+      const shuffled = [...names].sort(() => Math.random() - 0.5);
+      let groups = [];
+
+      if (mode === 'count') {
+        groups = Array.from({ length: value }, () => []);
+        shuffled.forEach((name, i) => {
+          groups[i % value].push(name);
+        });
+      } else {
+        const groupCount = Math.ceil(shuffled.length / value);
+        groups = Array.from({ length: groupCount }, () => []);
+        shuffled.forEach((name, i) => {
+          groups[Math.floor(i / value)].push(name);
+        });
+      }
+
+      // Save sizes for shuffle recreation
+      lastGroupSizes = groups.map(g => g.length);
+
+      renderGroups(groups);
+      // show shuffle button when groups exist
+      document.getElementById('shuffleBtn').style.display = groups.length ? 'inline-block' : 'none';
+    }
+
+    function renderGroups(groups) {
+      const container = document.getElementById('groupResults');
+      container.innerHTML = '';
+      groups.forEach((group, i) => {
+        const box = document.createElement('div');
+        box.className = 'group-box';
+
+        const title = document.createElement('h3');
+        title.textContent = `Group ${i + 1}`;
+        box.appendChild(title);
+
+        const list = document.createElement('ul');
+        group.forEach(name => {
+          const item = document.createElement('li');
+          item.textContent = name;
+          list.appendChild(item);
+        });
+        box.appendChild(list);
+        container.appendChild(box);
+      });
+    }
+
+    // Shuffle groups while preserving previously generated group sizes
+    function shuffleGroups() {
+      // Gather all currently displayed names (fallback to nameGrid if none shown)
+      const currentNames = Array.from(document.querySelectorAll('#groupResults .group-box li'))
+        .map(li => li.textContent)
+        .filter(Boolean);
+
+      // If groupResults empty, fallback to pulling from name inputs
+      const names = currentNames.length ? currentNames : getAllNames();
+      if (names.length === 0 || lastGroupSizes.length === 0) {
+        alert('No groups available to shuffle. Generate groups first.');
+        return;
+      }
+
+      // Shuffle flattened names
+      const shuffled = [...names].sort(() => Math.random() - 0.5);
+
+      // Recreate groups using lastGroupSizes (preserves group counts/sizes)
+      const groups = [];
+      let index = 0;
+      for (let size of lastGroupSizes) {
+        groups.push(shuffled.slice(index, index + size));
+        index += size;
+      }
+
+      // In case sizes don't sum to all names (shouldn't happen), append remainder
+      if (index < shuffled.length) {
+        let i = 0;
+        while (index < shuffled.length) {
+          groups[i % groups.length].push(shuffled[index++]);
+          i++;
+        }
+      }
+
+      renderGroups(groups);
+    }
+
+    function toggleFullscreen() {
+      const isFullscreen = document.body.classList.toggle('fullscreen');
+      document.getElementById('exitFullscreen').style.display = isFullscreen ? 'block' : 'none';
+      document.getElementById('fullscreenTitle').style.display = isFullscreen ? 'block' : 'none';
+    }
+
+    // Escape key support to exit fullscreen
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && document.body.classList.contains('fullscreen')) {
+        toggleFullscreen();
+      }
     });
-  } else {
-    const groupCount = Math.ceil(shuffled.length / value);
-    groups = Array.from({ length: groupCount }, () => []);
-    shuffled.forEach((name, i) => {
-      groups[Math.floor(i / value)].push(name);
-    });
-  }
 
-  const container = document.getElementById('groupResults');
-  container.innerHTML = '';
-  groups.forEach((group, i) => {
-    const box = document.createElement('div');
-    box.className = 'group-box';
-
-    const title = document.createElement('h3');
-    title.textContent = `Group ${i + 1}`;
-    box.appendChild(title);
-
-    const list = document.createElement('ul');
-    group.forEach(name => {
-      const item = document.createElement('li');
-      item.textContent = name;
-      list.appendChild(item);
-    });
-    box.appendChild(list);
-    container.appendChild(box);
-  });
-}
-
-function toggleFullscreen() {
-  const isFullscreen = document.body.classList.toggle('fullscreen');
-  document.getElementById('exitFullscreen').style.display = isFullscreen ? 'block' : 'none';
-  document.getElementById('fullscreenTitle').style.display = isFullscreen ? 'block' : 'none';
-}
-
-// ✅ Escape key support to exit fullscreen
-document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape' && document.body.classList.contains('fullscreen')) {
-    toggleFullscreen();
-  }
-});
-
-// ✅ Initialize with 20 name boxes
-addNameBox('', 20);
+    // Initialize with 20 name boxes
+    addNameBox('', 20);
+    // Set initial group input placeholder
+    toggleGroupMode();
   </script>
 </body>
 </html>
