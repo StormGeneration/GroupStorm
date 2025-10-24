@@ -180,8 +180,10 @@
       color: #00bcd4;
       font-size: 32px;
       margin-bottom: 20px;
+      outline: none;
     }
 
+    /* hide UI in fullscreen */
     body.fullscreen .topbar,
     body.fullscreen .controls,
     body.fullscreen #nameGrid,
@@ -239,6 +241,20 @@
       overflow-y: auto;
     }
 
+    /* Make group results scrollable when content is long */
+    #groupResults {
+      max-height: calc(100vh - 260px); /* keep layout, allow vertical scroll */
+      overflow: auto;
+      padding-right: 6px;
+    }
+
+    /* remove visible dotted/ dashed outline when titles are editable */
+    .editable {
+      outline: none;
+      border-radius: 0;
+      padding: 0;
+    }
+
     /* shuffle button visibility helper */
     #shuffleBtn { display: none; }
 
@@ -247,6 +263,14 @@
       h1 { font-size: 22px; }
       .btn-main { font-size: 14px; padding: 8px 12px; }
     }
+
+    /* When title or group name is editable, keep style but no dotted outline */
+    .group-box h3[contenteditable="true"] {
+      cursor: text;
+      /* slightly bolder color to indicate editability but no outline */
+      color: #b2ebf2;
+    }
+    .group-box h3:focus { outline: none; }
   </style>
 </head>
 <body>
@@ -256,13 +280,13 @@
     <button class="btn-secondary" onclick="toggleFullscreen()">Fullscreen Mode</button>
   </div>
 
-  <!-- ✅ Added exit button -->
+  <!-- Exit Fullscreen button -->
   <div id="exitFullscreen">
     <button class="btn-secondary" onclick="toggleFullscreen()">Exit Fullscreen</button>
   </div>
 
-  <!-- ✅ Added editable title -->
-  <h1 id="fullscreenTitle" contenteditable="true">Click To Edit Title | esc To Exit Full Screen Mode</h1>
+  <!-- Editable fullscreen title (shown only in fullscreen) -->
+  <h1 id="fullscreenTitle" contenteditable="true" aria-label="Fullscreen title">Click To Edit Title/Group Name | esc To Exit Full Screen Mode</h1>
 
   <div class="app">
     <div class="grid">
@@ -371,8 +395,26 @@
         const box = document.createElement('div');
         box.className = 'group-box';
 
+        // Group title element - will be contenteditable in fullscreen
         const title = document.createElement('h3');
         title.textContent = `Group ${i + 1}`;
+        title.dataset.index = i;
+        // apply editable state depending on fullscreen
+        title.contentEditable = document.body.classList.contains('fullscreen');
+        if (title.contentEditable === "true" || title.contentEditable === true) {
+          title.classList.add('editable');
+        } else {
+          title.classList.remove('editable');
+        }
+        // prevent accidental newlines when editing
+        title.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            // blur to commit change
+            title.blur();
+          }
+        });
+
         box.appendChild(title);
 
         const list = document.createElement('ul');
@@ -423,16 +465,50 @@
       renderGroups(groups);
     }
 
+    // Toggle fullscreen mode: show/hide UI and enable contentEditable for title + group names
     function toggleFullscreen() {
       const isFullscreen = document.body.classList.toggle('fullscreen');
       document.getElementById('exitFullscreen').style.display = isFullscreen ? 'block' : 'none';
       document.getElementById('fullscreenTitle').style.display = isFullscreen ? 'block' : 'none';
+
+      // Make fullscreenTitle editable only when in fullscreen
+      const fsTitle = document.getElementById('fullscreenTitle');
+      fsTitle.contentEditable = isFullscreen;
+      if (isFullscreen) {
+        fsTitle.classList.add('editable');
+        // focus for quick edit
+        setTimeout(() => fsTitle.focus(), 80);
+      } else {
+        fsTitle.classList.remove('editable');
+      }
+
+      // Toggle contentEditable on all current group <h3> titles
+      document.querySelectorAll('#groupResults .group-box h3').forEach(h3 => {
+        h3.contentEditable = isFullscreen;
+        if (isFullscreen) {
+          h3.classList.add('editable');
+          // allow click-to-edit caret
+          h3.setAttribute('tabindex', '0');
+        } else {
+          h3.classList.remove('editable');
+          h3.removeAttribute('tabindex');
+        }
+      });
     }
 
     // Escape key support to exit fullscreen
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && document.body.classList.contains('fullscreen')) {
         toggleFullscreen();
+      }
+    });
+
+    // Prevent newlines in contenteditable areas (commits on Enter)
+    document.addEventListener('keydown', (e) => {
+      const el = document.activeElement;
+      if ((el && el.isContentEditable) && e.key === 'Enter') {
+        e.preventDefault();
+        el.blur();
       }
     });
 
